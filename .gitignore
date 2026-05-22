@@ -84,3 +84,6 @@ tm.json
 
 android/build
 android/app/.cxx
+
+# Pre-downloaded build dependencies (GitHub releases proxy)
+assets/NewPipeCLI-windows-x64.zip
