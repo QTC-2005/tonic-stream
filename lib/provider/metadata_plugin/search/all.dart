@@ -1,0 +1,26 @@
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:tonic/models/metadata/metadata.dart';
+import 'package:tonic/provider/metadata_plugin/metadata_plugin_provider.dart';
+import 'package:tonic/services/metadata/errors/exceptions.dart';
+
+final metadataPluginSearchAllProvider =
+    FutureProvider.autoDispose.family<SpotubeSearchResponseObject, String>(
+  (ref, query) async {
+    final metadataPlugin = await ref.watch(metadataPluginProvider.future);
+
+    if (metadataPlugin == null) {
+      throw MetadataPluginException.noDefaultMetadataPlugin();
+    }
+
+    return metadataPlugin.search.all(query);
+  },
+);
+
+final metadataPluginSearchChipsProvider = FutureProvider((ref) async {
+  final metadataPlugin = await ref.watch(metadataPluginProvider.future);
+
+  if (metadataPlugin == null) {
+    throw MetadataPluginException.noDefaultMetadataPlugin();
+  }
+  return metadataPlugin.search.chips;
+});
