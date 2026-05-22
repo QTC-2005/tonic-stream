@@ -44,6 +44,7 @@ import 'package:tonic/services/kv_store/encrypted_kv_store.dart';
 import 'package:tonic/services/kv_store/kv_store.dart';
 import 'package:tonic/services/logger/logger.dart';
 import 'package:tonic/services/wm_tools/wm_tools.dart';
+import 'package:tonic/services/sources/builtin_sources_provider.dart';
 import 'package:tonic/utils/migrations/sandbox.dart';
 import 'package:tonic/utils/platform.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -156,6 +157,7 @@ class Spotube extends HookConsumerWidget {
     ref.listen(audioSourcePluginProvider, (_, __) {});
     ref.listen(metadataPluginUpdateCheckerProvider, (_, __) {});
     ref.listen(audioSourcePluginUpdateCheckerProvider, (_, __) {});
+    ref.listen(builtinSourcesProvider, (_, __) {});
 
     useFixWindowStretching();
     useDisableBatteryOptimizations();

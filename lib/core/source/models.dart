@@ -1,5 +1,23 @@
 import 'tonic_audio_source.dart';
 
+/// Quality tag for a search result match.
+///
+/// Helps users select high-quality tracks. Sources populate this
+/// based on what they know from the search API response.
+enum QualityTag {
+  /// Lossless: FLAC/APE/WAV/SQ/ZP/Hi-Res — best quality.
+  lossless,
+
+  /// High: 320kbps MP3, HQ — good quality.
+  high,
+
+  /// Standard: 128kbps or equivalent.
+  standard,
+
+  /// Cannot be determined from search results alone.
+  unknown,
+}
+
 /// Result of searching an audio source engine.
 class TonicSourceMatch {
   final String id;
@@ -10,6 +28,19 @@ class TonicSourceMatch {
   final String externalUri;
   final String sourceName;
 
+  /// Inferred quality for this match.
+  ///
+  /// Sources like QQ Music and Kuwo can detect lossless/high tracks
+  /// from the search API. Others default to [QualityTag.unknown].
+  final QualityTag qualityTag;
+
+  /// Opaque data cached from search for use by [getStreams].
+  ///
+  /// When a source emits a match with [cacheData], [getStreams] can
+  /// read it back to skip a redundant API call. Sources decide what
+  /// (if anything) to store here.
+  final Map<String, dynamic>? cacheData;
+
   const TonicSourceMatch({
     required this.id,
     required this.title,
@@ -18,6 +49,8 @@ class TonicSourceMatch {
     this.thumbnail,
     required this.externalUri,
     required this.sourceName,
+    this.qualityTag = QualityTag.unknown,
+    this.cacheData,
   });
 }
 
@@ -36,27 +69,39 @@ class TonicSourceStream {
   });
 }
 
-/// Priority tier for an audio source engine.
-///
-/// Engines at a higher tier are tried before lower tiers.
-enum SourcePriority {
-  /// Built-in sources (Bilibili, etc.) — fastest, most reliable.
-  builtin,
-
-  /// MusicFree JS plugin bridge.
-  musicfree,
-
-  /// Legacy Hetu Script plugins (retained for compatibility).
-  hetuPlugin,
-}
-
 /// Descriptor registering an engine with the [SourceAggregator].
 class SourceEntry {
   final TonicAudioSource engine;
-  final SourcePriority priority;
 
-  const SourceEntry({
+  /// Sliding window of recent search latencies in milliseconds.
+  /// Most recent last.  Used to compute dynamic priority.
+  final List<int> recentLatencies;
+
+  /// Manual priority boost (user-configured).
+  /// Lower values are searched first. Default is 0.
+  int userBoost;
+
+  SourceEntry({
     required this.engine,
-    required this.priority,
-  });
+    List<int>? recentLatencies,
+    this.userBoost = 0,
+  }) : recentLatencies = recentLatencies ?? [];
+
+  /// Average latency, or [double.infinity] if no data yet.
+  double get averageLatencyMs {
+    if (recentLatencies.isEmpty) return double.infinity;
+    return recentLatencies.reduce((a, b) => a + b) / recentLatencies.length;
+  }
+
+  /// Score for sorting: lower = faster → searched first.
+  /// Negative userBoost pushes a source ahead.
+  double get sortScore => averageLatencyMs + userBoost;
+
+  /// Record a new latency sample (max 10 samples kept).
+  void recordLatency(int ms) {
+    recentLatencies.add(ms);
+    while (recentLatencies.length > 10) {
+      recentLatencies.removeAt(0);
+    }
+  }
 }
